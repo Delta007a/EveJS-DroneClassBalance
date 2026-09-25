@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 3,
+  "id": "droneclassbalance",
+  "displayName": "DroneClassBalance",
+  "version": "0.2.0",
+  "description": "Server-side class-based drone bandwidth, active-drone and bay rules.",
+  "kind": "loader",
+  "supportedBackends": [
+    "native"
+  ],
+  "activation": {
+    "strategy": "loader_rename"
+  },
+  "restart": "game_server",
+  "compatibility": {
+    "evejsVersions": [
+      "0.12.8",
+      "0.12.9"
+    ]
+  },
+  "settings": {
+    "schemaVersion": 1,
+    "files": [
+      {
+        "id": "preferences",
+        "base": "mod",
+        "path": "settings.json",
+        "format": "json"
+      }
+    ],
+    "fields": [
+      {
+        "id": "logMatches",
+        "label": "Log changed ship rules",
+        "type": "boolean",
+        "default": true,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "logMatches"
+        ],
+        "advanced": true
+      },
+      {
+        "id": "destroyer.bandwidth",
+        "label": "Destroyer: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Destroyer",
+          "bandwidthMultiplier"
+        ],
+        "group": "Destroyer",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "destroyer.active",
+        "label": "Destroyer: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Destroyer",
+          "maxActiveDrones"
+        ],
+        "group": "Destroyer",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "destroyer.bay",
+        "label": "Destroyer: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Destroyer",
+          "droneBayMultiplier"
+        ],
+        "group": "Destroyer",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "cruiser.bandwidth",
+        "label": "Cruiser: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Cruiser",
+          "bandwidthMultiplier"
+        ],
+        "group": "Cruiser",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "cruiser.active",
+        "label": "Cruiser: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Cruiser",
+          "maxActiveDrones"
+        ],
+        "group": "Cruiser",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "cruiser.bay",
+        "label": "Cruiser: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Cruiser",
+          "droneBayMultiplier"
+        ],
+        "group": "Cruiser",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "battleship.bandwidth",
+        "label": "Battleship: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Battleship",
+          "bandwidthMultiplier"
+        ],
+        "group": "Battleship",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "battleship.active",
+        "label": "Battleship: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Battleship",
+          "maxActiveDrones"
+        ],
+        "group": "Battleship",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "battleship.bay",
+        "label": "Battleship: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Battleship",
+          "droneBayMultiplier"
+        ],
+        "group": "Battleship",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "miningBarge.bandwidth",
+        "label": "Mining Barge: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Mining Barge",
+          "bandwidthMultiplier"
+        ],
+        "group": "Mining Barge",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "miningBarge.active",
+        "label": "Mining Barge: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Mining Barge",
+          "maxActiveDrones"
+        ],
+        "group": "Mining Barge",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "miningBarge.bay",
+        "label": "Mining Barge: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Mining Barge",
+          "droneBayMultiplier"
+        ],
+        "group": "Mining Barge",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "exhumer.bandwidth",
+        "label": "Exhumer: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Exhumer",
+          "bandwidthMultiplier"
+        ],
+        "group": "Exhumer",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "exhumer.active",
+        "label": "Exhumer: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Exhumer",
+          "maxActiveDrones"
+        ],
+        "group": "Exhumer",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "exhumer.bay",
+        "label": "Exhumer: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Exhumer",
+          "droneBayMultiplier"
+        ],
+        "group": "Exhumer",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "industrialCommandShip.bandwidth",
+        "label": "Industrial Command Ship: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Industrial Command Ship",
+          "bandwidthMultiplier"
+        ],
+        "group": "Industrial Command Ship",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "industrialCommandShip.active",
+        "label": "Industrial Command Ship: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Industrial Command Ship",
+          "maxActiveDrones"
+        ],
+        "group": "Industrial Command Ship",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "industrialCommandShip.bay",
+        "label": "Industrial Command Ship: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Industrial Command Ship",
+          "droneBayMultiplier"
+        ],
+        "group": "Industrial Command Ship",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "capitalIndustrialShip.bandwidth",
+        "label": "Capital Industrial Ship: drone bandwidth multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Capital Industrial Ship",
+          "bandwidthMultiplier"
+        ],
+        "group": "Capital Industrial Ship",
+        "minimum": 0.01,
+        "maximum": 100
+      },
+      {
+        "id": "capitalIndustrialShip.active",
+        "label": "Capital Industrial Ship: active drone limit (0 = native)",
+        "type": "integer",
+        "default": 0,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Capital Industrial Ship",
+          "maxActiveDrones"
+        ],
+        "group": "Capital Industrial Ship",
+        "minimum": 0,
+        "maximum": 100
+      },
+      {
+        "id": "capitalIndustrialShip.bay",
+        "label": "Capital Industrial Ship: drone bay multiplier",
+        "type": "number",
+        "default": 1,
+        "restart": "game_server",
+        "file": "preferences",
+        "key": [
+          "classes",
+          "Capital Industrial Ship",
+          "droneBayMultiplier"
+        ],
+        "group": "Capital Industrial Ship",
+        "minimum": 0.01,
+        "maximum": 100
+      }
+    ]
+  },
+  "updates": {
+    "provider": "github",
+    "repository": "Delta007a/EveJS-DroneClassBalance",
+    "asset": "EveJS-DroneClassBalance-{version}.zip",
+    "channel": "stable",
+    "tagPrefix": "v",
+    "preserveFiles": []
+  }
+}

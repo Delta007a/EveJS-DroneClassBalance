@@ -1,0 +1,7 @@
+{
+  "logMatches": true,
+  "classes": {
+    "Mining Barge": { "bandwidthMultiplier": 1, "maxActiveDrones": 0, "droneBayMultiplier": 1 }
+  },
+  "shipOverrides": { "byName": {}, "byTypeID": {} }
+}
