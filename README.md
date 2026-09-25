@@ -14,6 +14,6 @@ The Launcher carries `settings.json` forward during an update. Before upgrading 
 
 The loader changes only the live fitting resource-state seam in memory. It composes with SoloProgressionBalance in either load order. Disabling the mod and restarting restores native values; Launcher Remove removes its package folder, including package-local settings, so back up `settings.json` first if you want to keep it.
 
-Final 0.12.9 certification: targeted transform/config verifier passed, unrelated source edits and both Drone/Solo transform orders passed, and the four-loader composition gate passed. Live final gameplay still needs its own run before claiming a gameplay pass.
+Final 0.12.9 certification: targeted transform/config verifier passed, unrelated source edits and both Drone/Solo transform orders passed, and the four-loader composition gate passed. In the real final client, configured bandwidth and bay values were correct; a Porpoise held 20 drones in space, and five Ice Harvesting Drones launched in a separate check. Control range, a no-op class and an incapable hull were covered by the final source/runtime verifier rather than separate client runs.
 
 License: AGPL-3.0-only. EveJS itself is AGPL-3.0-only; no vendor source is included in this package.
