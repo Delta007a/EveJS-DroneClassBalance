@@ -1,0 +1,90 @@
+{
+  "fittingDogmaLocation.__init__": {
+    "line": 60,
+    "bytecodeSha256": "6b4430e4815a1e8e7c02e4ca931ae0874ef987978ac17ddf281aaade5bb4cb2c",
+    "arguments": [
+      "self",
+      "broker",
+      "charBrain"
+    ]
+  },
+  "fittingDogmaLocation.LoadMyShip": {
+    "line": 137,
+    "bytecodeSha256": "9db7f540a10735ca553b31a91335a392af0b0200c88319e3a55adaa58c2a5c23",
+    "arguments": [
+      "self",
+      "typeID"
+    ]
+  },
+  "fittingDogmaLocation.GetCapacity": {
+    "line": 473,
+    "bytecodeSha256": "3f6fb9a331b87c21219afcf85fef6f1f642876207f1513b8c3008b44aeeec7f2",
+    "arguments": [
+      "self",
+      "shipID",
+      "attributeID",
+      "flagID"
+    ]
+  },
+  "fittingDogmaLocation.GetAccurateAttributeValue": {
+    "line": 530,
+    "bytecodeSha256": "870224ac24244cd02193ceb68ee537bc6b38e6b808adcbad20862b6a8def0faa",
+    "arguments": [
+      "self",
+      "itemID",
+      "attributeID"
+    ]
+  },
+  "fittingDogmaLocation.GetMaxActiveDrones": {
+    "line": 690,
+    "bytecodeSha256": "5d679cc17c55a3b8218097a42fe048f6012fd1183333654c40eb77e9909d715f",
+    "arguments": [
+      "self"
+    ]
+  },
+  "droneUtil.GetOptimalDroneDamage": {
+    "line": 51,
+    "bytecodeSha256": "cdd726db929f462b19a74955752c39e1375ee455ebedc34ee44a8fff7c298522",
+    "arguments": [
+      "shipID",
+      "dogmaLocation",
+      "activeDrones"
+    ]
+  },
+  "droneUtil.GetDroneBandwidth": {
+    "line": 79,
+    "bytecodeSha256": "8b1d0b7b6a57107b4b0185f70090ca6d1b480640a7f4c9d909dffabf04eb2757",
+    "arguments": [
+      "shipID",
+      "dogmaLocation",
+      "activeDrones"
+    ]
+  },
+  "droneUtil.RegisterDroneAsActive": {
+    "line": 92,
+    "bytecodeSha256": "82660b74f2be7e6838771f3cbc839f7a29a8c17b56445e7057f829305743eb66",
+    "arguments": [
+      "self",
+      "dogmaLocation",
+      "droneID",
+      "qty",
+      "raiseError"
+    ]
+  },
+  "baseDogmaLocation.GetAttributeValue": {
+    "line": 1604,
+    "bytecodeSha256": "8e1640e63dad78f8b40b7d6847967735c1acf2ace444ceb678e332effc288f9f",
+    "arguments": [
+      "self",
+      "itemKey",
+      "attributeID"
+    ]
+  },
+  "dronePickerMenu.GetMaxActiveDrones": {
+    "line": 234,
+    "bytecodeSha256": "bfadc100cec213005cfab96b2340e383cf8f05c3fc06b2f9e495410842050b24",
+    "arguments": [
+      "self"
+    ]
+  }
+}

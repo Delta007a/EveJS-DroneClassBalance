@@ -2,8 +2,8 @@
   "schemaVersion": 3,
   "id": "droneclassbalance",
   "displayName": "DroneClassBalance",
-  "version": "0.2.0",
-  "description": "Server-side class-based drone bandwidth, active-drone and bay rules.",
+  "version": "0.2.1",
+  "description": "Class-based drone rules with automatic fitting simulation on supported clients.",
   "kind": "loader",
   "supportedBackends": [
     "native"
@@ -2427,5 +2427,20 @@
     "channel": "stable",
     "tagPrefix": "v",
     "preserveFiles": []
+  },
+  "launcherApi": {
+    "version": 1,
+    "helper": {
+      "runtime": "node",
+      "path": "simulation/helper.js"
+    },
+    "capabilities": [
+      "install",
+      "verify",
+      "prepare_profile",
+      "prepare_disable",
+      "prepare_remove",
+      "recover"
+    ]
   }
 }

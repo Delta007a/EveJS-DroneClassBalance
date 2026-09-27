@@ -12,7 +12,7 @@ const {
   transformLiveFittingStateSource,
 } = require("./lib/sourceTransforms");
 
-const MOD_VERSION = "0.2.0";
+const MOD_VERSION = "0.2.1";
 const MOD_DIR = __dirname;
 const RUNTIME_ROOT = path.resolve(MOD_DIR, "../..");
 const TARGET = path.resolve(
@@ -99,3 +99,12 @@ module.exports = {
   install,
   installResult,
 };
+
+// Optional presentation integration cannot unwind the authoritative gameplay loader.
+try {
+  module.exports.simulation = require("./simulation").install(installResult, RUNTIME_ROOT, MOD_DIR);
+  if (!module.exports.simulation.active) console.warn(`[droneClassBalance/simulation] ${module.exports.simulation.reason}; gameplay remains enabled.`);
+} catch (error) {
+  console.warn(`[droneClassBalance/simulation] unavailable: ${error.message}; gameplay remains enabled.`);
+  module.exports.simulation = { active: false, reason: "optional-preflight-failed" };
+}
