@@ -7,11 +7,24 @@ const zlib = require("node:zlib");
 const KEY = "evejs.ourMods.privateFittingRuntime";
 const HANDSHAKE_HASH = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
 const hash = source => crypto.createHash("sha256").update(String(source).replace(/\r\n/g, "\n")).digest("hex");
-function supportsSource(source) { return hash(source) === HANDSHAKE_HASH; }
-function supportsRoot(root) {
-  return JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8")).version === "0.12.9" &&
-    supportsSource(fs.readFileSync(path.join(root, "server/src/network/tcp/handshake.js"), "utf8"));
+// Exact source/version pairs. 261018.1 preserves buildTidiSignedFunc,
+// buildMarshaledString and the signedFunc [buffer, false] ownership seam.
+// Its changes are per-connection IDs and transport-close encoding, which the
+// wrapper leaves intact. Evaluate native login first and return its result.
+const HANDSHAKE_HASHES = Object.freeze({
+  "0.12.9": HANDSHAKE_HASH,
+  "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
+  "261018.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
+});
+function supportsSource(source) { return Object.values(HANDSHAKE_HASHES).includes(hash(source)); }
+function getRuntimeVersion(root) {
+  try {
+    const version = JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8")).version;
+    const expected = HANDSHAKE_HASHES[version];
+    return expected && hash(fs.readFileSync(path.join(root, "server/src/network/tcp/handshake.js"), "utf8")) === expected ? version : null;
+  } catch (_) { return null; }
 }
+function supportsRoot(root) { return getRuntimeVersion(root) !== null; }
 function extendSource(source) {
   if (!supportsSource(source)) return null;
   // In-memory only. Retain the original login function and its return value.
@@ -26,7 +39,7 @@ function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
   const bootstrap = fs.readFileSync(path.join(modRoot, "client/login.py"), "utf8");
   const fingerprints = JSON.parse(fs.readFileSync(path.join(modRoot, "client/compatibility.json"), "utf8"));
-  const bundle = { abi: 1, revision: 1, families: ["droneclassbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
+  const bundle = { abi: 1, revision: 4, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
   bundle.digest = bundleDigest(bundle);
   return bundle;
 }
@@ -54,4 +67,4 @@ function createDelivery(bundle, policyProvider) {
     return Buffer.concat([header, data]);
   };
 }
-module.exports = { KEY, HANDSHAKE_HASH, supportsRoot, supportsSource, extendSource, readBundle, bundleDigest, createDelivery };
+module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, supportsSource, extendSource, readBundle, bundleDigest, createDelivery };

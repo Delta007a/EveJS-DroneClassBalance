@@ -86,5 +86,110 @@
     "arguments": [
       "self"
     ]
+  },
+  "moduleButtonTooltip.ModuleButtonTooltip.GetEffectiveAttributeValue": {
+    "line": 360,
+    "bytecodeSha256": "2790abf2cd3a15f4e4abe6f50fc4c0b7ac61965cb7720d22ec07d4154b6fea4c",
+    "arguments": [
+      "self",
+      "itemID",
+      "attributeID"
+    ]
+  },
+  "moduleButtonTooltip.ModuleButtonTooltip.AddMiningLaserInfo": {
+    "line": 756,
+    "bytecodeSha256": "2d1fe3004ac8a252a04f37def02f7353097d717d0a71012c7abecab6aee68800",
+    "arguments": [
+      "self",
+      "itemID",
+      "chargeInfoItem"
+    ]
+  },
+  "droneTooltip.DroneTooltip.GetDogmaLocation": {
+    "line": 68,
+    "bytecodeSha256": "c5ad5837d4935d70144b5be5b0d5ba631e9de823b2f967817c22debf21270a0d",
+    "arguments": [
+      "self"
+    ]
+  },
+  "droneTooltip.DroneTooltip.AddMiningDroneInfo": {
+    "line": 100,
+    "bytecodeSha256": "d1c82c60ec67047a6e7a8cbec5a2c8bbcd2852fdfaa59b755d8173763e7f4fb3",
+    "arguments": [
+      "self",
+      "itemID",
+      "chargeInfoItem"
+    ]
+  },
+  "droneTooltip.DroneFittingTooltip.GetDogmaLocation": {
+    "line": 140,
+    "bytecodeSha256": "c5ad5837d4935d70144b5be5b0d5ba631e9de823b2f967817c22debf21270a0d",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoSlots.ApplyAttributes": {
+    "line": 30,
+    "bytecodeSha256": "f2ed626fcf33134dcb9f65855b70dd8d95364bb987d1b80d8a7479f9f6a1070b",
+    "arguments": [
+      "self",
+      "attributes"
+    ]
+  },
+  "minihangar.CargoSlots._Update": {
+    "line": 173,
+    "bytecodeSha256": "29b2f8c48430def4b60354ffc96a98ab9e536b2603aaecc13f0bf38d06ff0b15",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoSlots.GetSimulatedCapacity": {
+    "line": 205,
+    "bytecodeSha256": "02c7136f0a8dab09842033b1366d123ee2722aeb9671b3ebd48bc9e40ed6b8a8",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoDroneSlots.GetSimulatedCapacity": {
+    "line": 262,
+    "bytecodeSha256": "a529778d1cb6a2742d3d3052bf847466bc9f988ea46e9f987b347a7eea309b2a",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoCargoSlots.GetSimulatedCapacity": {
+    "line": 314,
+    "bytecodeSha256": "a529778d1cb6a2742d3d3052bf847466bc9f988ea46e9f987b347a7eea309b2a",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoFighterSlots.GetSimulatedCapacity": {
+    "line": 358,
+    "bytecodeSha256": "a529778d1cb6a2742d3d3052bf847466bc9f988ea46e9f987b347a7eea309b2a",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoStructureAmmoBay.GetSimulatedCapacity": {
+    "line": 406,
+    "bytecodeSha256": "a529778d1cb6a2742d3d3052bf847466bc9f988ea46e9f987b347a7eea309b2a",
+    "arguments": [
+      "self"
+    ]
+  },
+  "minihangar.CargoSlots._Update": {
+    "line": 173,
+    "bytecodeSha256": "29b2f8c48430def4b60354ffc96a98ab9e536b2603aaecc13f0bf38d06ff0b15",
+    "arguments": [
+      "self"
+    ]
+  },
+  "fittingDogmaLocation.FittingDogmaLocation.GetFittedItemsToShip": {
+    "line": 394,
+    "bytecodeSha256": "9413b042452b995ecc32fde7f1dc832c5e2524919b5825e39be251d687df6acb",
+    "arguments": [
+      "self"
+    ]
   }
 }

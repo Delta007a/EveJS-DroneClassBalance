@@ -4,7 +4,7 @@
 const Module = require("node:module");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { KEY, supportsRoot, extendSource, bundleDigest, createDelivery } = require("./delivery");
+const { KEY, supportsRoot, getRuntimeVersion, extendSource, bundleDigest, createDelivery } = require("./delivery");
 const FAMILIES = Object.freeze(["droneclassbalance", "soloprogressionbalance"]);
 const canonical = filename => path.resolve(filename).toLowerCase();
 
@@ -18,6 +18,7 @@ function validMember(member) {
 }
 
 function createState(runtimeRoot, host = globalThis, moduleHost = Module) {
+  const runtimeVersion = getRuntimeVersion(runtimeRoot);
   const target = canonical(path.join(runtimeRoot, "server/src/network/tcp/handshake.js"));
   const members = new Map();
   const warned = new Set();
@@ -57,7 +58,7 @@ function createState(runtimeRoot, host = globalThis, moduleHost = Module) {
         try {
           const policy = member.policy();
           if (policy === null || policy === undefined) continue;
-          if (policy.schema !== 1 || policy.evejs !== "0.12.9" || policy.clientBuild !== 3396210 ||
+          if (policy.schema !== 1 || policy.evejs !== runtimeVersion || policy.clientBuild !== 3396210 ||
               Object.keys(policy.providers || {}).length !== 1 || !policy.providers[member.id]) throw Error("invalid policy envelope");
           providers[member.id] = policy.providers[member.id];
         } catch (error) { state.warn(`${member.id} policy unavailable`); }
@@ -65,7 +66,7 @@ function createState(runtimeRoot, host = globalThis, moduleHost = Module) {
       if (Object.keys(providers).some(id => !bundle.families.includes(id))) {
         state.warn("Selected private runtime lacks a participating family"); return null;
       }
-      const policy = { schema: 1, evejs: "0.12.9", clientBuild: 3396210, providers };
+      const policy = { schema: 1, evejs: runtimeVersion, clientBuild: 3396210, providers };
       policy.revision = crypto.createHash("sha256").update(JSON.stringify(policy)).digest("hex");
       return { bundle, policy: Object.keys(providers).length ? policy : null };
     },

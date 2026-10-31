@@ -1,7 +1,7 @@
 "use strict";
 const path = require("node:path");
 const { attachMember } = require("./familyRuntime");
-const { readBundle } = require("./delivery");
+const { readBundle, getRuntimeVersion } = require("./delivery");
 const { buildDronePolicy } = require("./policy");
 const { permitted } = require("./capability");
 function install(gameplayState, runtimeRoot, modRoot) {
@@ -13,7 +13,7 @@ function install(gameplayState, runtimeRoot, modRoot) {
     if (!gameplayState.transformApplied) return null;
     if (policy === undefined) {
       const { listItemTypes } = require(path.join(runtimeRoot, "server/src/services/inventory/itemTypeRegistry"));
-      policy = buildDronePolicy(gameplayState, listItemTypes());
+      policy = buildDronePolicy(gameplayState, listItemTypes(), getRuntimeVersion(runtimeRoot));
       console.log(`[droneClassBalance/simulation] policy ${policy?.revision || "unavailable"}`);
     }
     return policy;

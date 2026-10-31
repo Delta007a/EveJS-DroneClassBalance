@@ -1,19 +1,35 @@
-# DroneClassBalance 0.2.1
+# DroneClassBalance 0.2.3
 
-Drone bandwidth, maximum active drones and drone bay rules for 47 ship groups, with optional per-hull exceptions. Server gameplay supports native **EveJS 0.12.8 and final 0.12.9**.
+Supports native EveJS `0.12.8`, `0.12.9`, `261018.1`, `261028.1`. The 261028.1 port was checked with **EveJS Launcher 1.0.76** and EVE client **build 3396210**. The user confirmed all four mods passed in-game verification on 2026-10-31; the automated port checks remain separate evidence. Older declared server support is retained, without claiming a new full certification of those versions.
 
-Version 0.2.1 adds automatic **Fitting > Simulate** support for bandwidth, bay capacity and exact active-drone limits, including the drone picker. No separate companion is required. Existing gameplay rules and configuration are unchanged; actual gameplay remains server-authoritative.
+## Install and update
 
-**Install and configure.** Download `EveJS-DroneClassBalance-0.2.1.zip` from Releases. In **EveJS Launcher 1.0.66 > Mods > Add ZIP**, select it, enable DroneClassBalance, configure and restart the Game server. Reconnect a fresh EVE client. The ZIP starts disabled. Existing manually copied folders can use Launcher's Adopt flow.
+Download `EveJS-DroneClassBalance-0.2.3.zip` from [Releases](https://github.com/Delta007a/EveJS-DroneClassBalance/releases/latest). Use Launcher **Mods > Add ZIP**, enable the mod and open **Configure**. Release ZIPs contain `loader.js.disabled` and start disabled. Configuration changes require a Game server restart; transient client features require a fresh client connection.
 
-Configure shows seven common ship groups; Show advanced settings reveals the other 40 and logging. Each group has bandwidth, active-drone and bay controls. Active-drone limit `0` keeps the native limit. Missing rules use native values, and hulls without native drone capability do not gain it.
+The package contains no personal `settings.json`, `.env`, runtime database or client archive. Launcher carries forward package-local files declared by the settings schema. Back up personal configuration before updating or removing a mod. For legacy customized source installations, transfer settings to the documented JSON configuration before updating; source files are replaced by updates.
 
-Sparse hull exceptions live in `mods/droneClassBalance/settings.json` under `shipOverrides.byName` and `shipOverrides.byTypeID`; `settings.example.json` supplies examples. Type ID takes precedence over ship name, then class. Unspecified fields inherit. Launcher updates preserve `settings.json`. If upgrading an older customized `config.js`/`shipOverrides.js` installation, transfer those rules into `settings.json` and retain a backup before upgrading. The package contains no personal settings; defaults are no-op class rules and empty hull exceptions.
+## Behavior and defaults
 
-**Simulation compatibility.** Currently verified only on **EveJS 0.12.9 / EVE client build 3396210 / Launcher 1.0.66**. Client simulation support is not claimed for EveJS 0.12.8. Native skills and module effects remain part of the simulated result. DroneClassBalance and SoloProgressionBalance 0.4.1 can be used together; either also works alone. Disable/remove the historical standalone Fitting Simulation Companion before using this release.
+Per-class bandwidth multiplier, exact maximum active drones and Drone Bay multiplier for 47 ship groups, with sparse hull overrides. Missing rules retain native values. Hulls without native drone capability do not gain it.
 
-Unsupported client/server seams, missing compatible Launcher delivery or invalid policy safely retain native simulation; normal server gameplay continues. The known AutoMining login-transform conflict also retains native simulation. Arbitrary third-party client hooks are not certified. Settings changes require a server restart and fresh client reconnect.
+| Setting | Default |
+| --- | --- |
+| Bandwidth multiplier, every class | 1x |
+| Maximum active drones | 0 in Configure = native limit |
+| Drone Bay multiplier, every class | 1x |
+| Hull overrides | empty |
+| Match logging | true |
 
-**Removal.** Close clients gracefully, stop the server, disable DroneClassBalance in Launcher, then restart and reconnect. Client hooks are transient; no vendor files need restoration. Back up `settings.json` before Launcher Remove, which removes the package and local settings. Manual server gameplay can still preload `mods/droneClassBalance/loader.js` with Node `--require` before EveJS loads; automatic simulation delivery uses Launcher.
+Configure exposes seven common ship groups; advanced settings reveal the remaining groups and logging. Without personal configuration the mod is a no-op. `mods/droneClassBalance/settings.json` stores `classes`, `logMatches` and `shipOverrides.byName` / `shipOverrides.byTypeID`. Type ID overrides take precedence over name, then class; unspecified fields inherit. `settings.example.json` is a neutral example. Legacy customized `config.js` / `shipOverrides.js` rules must be migrated to JSON before update; source files are replaced.
 
-License: AGPL-3.0-only. EveJS itself is AGPL-3.0-only; no vendor source is included in this package.
+## Embedded fitting simulation
+
+Projects bandwidth, bay capacity and the exact drone limit, including the three reviewed limit/picker hooks. Works independently or with SoloProgressionBalance 0.4.3. The private aggregate runtime retains ABI 1, wire schema 1 and bundle revision 4, with one aggregate controller/login transform and per-family isolation. No standalone companion is required; remove an old standalone Fitting Simulation Companion first.
+
+Simulation supports reviewed source/version pairs 0.12.9, 261018.1 and 261028.1 with client build 3396210 and exact method fingerprints. 0.12.8 remains gameplay-only. Unsupported, absent, malformed or conflicting delivery retains native simulation. Gameplay remains server-authoritative; arbitrary third-party login hooks are not certified. Injection is transient and never writes vendor client files. With MoonOreAnomalies, respect its manifest load-before order.
+
+## Removal
+
+Disable in Launcher, then use your normal server restart and client reconnect procedure. Back up `settings.json` before Remove, which deletes package-local settings. No client archive restoration is needed.
+
+License: AGPL-3.0-only. No vendor source is included.

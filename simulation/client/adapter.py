@@ -19,17 +19,7 @@ def _positive(value):
     return not isinstance(value, bool) and isinstance(value, INTEGER_TYPES + (float,)) and value > 0 and not math.isinf(value) and not math.isnan(value)
 
 
-def validate_policy(policy):
-    """Reject the entire provider on any malformed data; never invent rules."""
-    if not isinstance(policy, dict) or policy.get('schema') != 1 or policy.get('evejs') != '0.12.9' or policy.get('clientBuild') != 3396210:
-        return None
-    revision = policy.get('revision')
-    if not isinstance(revision, STRING_TYPES) or len(revision) != 64 or any(c not in '0123456789abcdef' for c in revision):
-        return None
-    providers = policy.get('providers')
-    if not isinstance(providers, dict) or set(providers) != set(['droneclassbalance']):
-        return None
-    provider = providers.get('droneclassbalance')
+def _validate_dcb(provider):
     if not isinstance(provider, dict) or provider.get('schema') != 1:
         return None
     rules, hulls = provider.get('rules'), provider.get('hulls')
@@ -51,6 +41,89 @@ def validate_policy(policy):
     return resolved
 
 
+def _type_id(value):
+    return not isinstance(value, bool) and isinstance(value, INTEGER_TYPES) and 0 < value <= 9007199254740991
+
+
+def _key_id(value):
+    return isinstance(value, STRING_TYPES) and value.isdigit() and _type_id(int(value)) and str(int(value)) == value
+
+
+def _validate_solo(provider):
+    if not isinstance(provider, dict) or provider.get('schema') != 1:
+        return None
+    programs, ships = provider.get('capacityPrograms'), provider.get('ships')
+    if not isinstance(programs, list) or len(programs) > 2000 or not isinstance(ships, dict) or len(ships) > 20000:
+        return None
+    normalized = []
+    for program in programs:
+        if not isinstance(program, dict) or len(program) > 128:
+            return None
+        row = {}
+        for key, operations in program.items():
+            if not _key_id(key) or int(key) in (BANDWIDTH, BAY, MAX_ACTIVE):
+                return None
+            if not isinstance(operations, list) or not 0 < len(operations) <= 8 or not all(_positive(x) for x in operations):
+                return None
+            row[int(key)] = tuple(operations)
+        normalized.append(row)
+    resolved = {}
+    for key, index in ships.items():
+        if not _key_id(key) or isinstance(index, bool) or not isinstance(index, INTEGER_TYPES) or not 0 <= index < len(normalized):
+            return None
+        resolved[int(key)] = normalized[index]
+    if provider.get('miningAttribute') != 77:
+        return None
+    result = {'ships': resolved, 'miningAttribute': 77}
+    for family in ('module', 'drone'):
+        types_list, scale = provider.get(family + 'Types'), provider.get(family + 'Scale')
+        if not isinstance(types_list, list) or len(types_list) > 20000 or not all(_type_id(x) for x in types_list) or not _positive(scale):
+            return None
+        if len(set(types_list)) != len(types_list):
+            return None
+        result[family + 'Types'] = set(types_list)
+        result[family + 'Scale'] = scale
+    if result['moduleTypes'] & result['droneTypes']:
+        return None
+    return result
+
+
+def validate_policy(policy):
+    if not isinstance(policy, dict) or policy.get('schema') != 1 or policy.get('evejs') not in ('0.12.9', '261018.1', '261028.1') or policy.get('clientBuild') != 3396210:
+        return None
+    revision, providers = policy.get('revision'), policy.get('providers')
+    if not isinstance(revision, STRING_TYPES) or len(revision) != 64 or any(c not in '0123456789abcdef' for c in revision):
+        return None
+    if not isinstance(providers, dict) or any(k not in ('droneclassbalance', 'soloprogressionbalance') for k in providers):
+        return None
+    valid = {}
+    for key, validate in (('droneclassbalance', _validate_dcb), ('soloprogressionbalance', _validate_solo)):
+        try:
+            value = validate(providers.get(key))
+            if value is not None:
+                valid[key] = value
+        except Exception:
+            pass
+    return valid or None
+
+
+def scale_round6(value, factor):
+    # Match JS Number(value * factor).toFixed(6), including binary midpoint cases.
+    if not _positive(value):
+        return value
+    product = float(value) * factor
+    if math.isinf(product) or math.isnan(product) or product < 0:
+        raise ValueError('Non-finite Solo projection')
+    if product == 0:
+        return 0.0
+    if product >= 1e21:
+        return product
+    numerator, denominator = product.as_integer_ratio()
+    rounded = (numerator * 1000000 * 2 + denominator) // (2 * denominator)
+    whole, fraction = divmod(rounded, 1000000)
+    return float('%d.%06d' % (whole, fraction))
+
+
 def _bind(function, obj):
     try:
         return types.MethodType(function, obj)
@@ -59,11 +132,19 @@ def _bind(function, obj):
 
 
 class PrivateGhostRuntime(object):
-    """One private wrapper owner for our mod family; DCB is the only current feature."""
+    """One private wrapper owner for our mod family; DCB and Solo share effective reads and teardown."""
     def __init__(self, policy, fitting_class, native_tracker_method, bandwidth_used_attribute,
-                 session, usable, warning, picker_class=None):
-        self.rules = validate_policy(policy)
-        self.active = self.rules is not None
+                 session, usable, warning, picker_class=None, cargo_class=None, format_hold=None):
+        self.families = validate_policy(policy) or {}
+        self.rules = self.families.get('droneclassbalance', {})
+        self.solo = self.families.get('soloprogressionbalance')
+        self.active = bool(self.families)
+        self.cargo_class = cargo_class
+        self.format_hold = format_hold
+        self.hint_wrapper = None
+        self.hint_had_own = False
+        self.original_hint = None
+        self.hold_descriptions = {}
         self.fitting_class = fitting_class
         self.native_tracker_method = native_tracker_method
         self.bandwidth_used_attribute = bandwidth_used_attribute
@@ -71,6 +152,7 @@ class PrivateGhostRuntime(object):
         self.usable = usable
         self.warning = warning
         self.records = []
+        self.dcb_locations = []
         self.original_init = None
         self.init_wrapper = None
         self.picker_class = picker_class
@@ -94,7 +176,7 @@ class PrivateGhostRuntime(object):
             return result
         self.init_wrapper = initialize
         self.fitting_class.__init__ = initialize
-        if self.picker_class is not None:
+        if self.rules and self.picker_class is not None:
             self.original_picker_max = self.picker_class.__dict__['GetMaxActiveDrones']
             def picker_max(menu):
                 location = getattr(menu, 'fittingDogmaLocation', None)
@@ -103,12 +185,15 @@ class PrivateGhostRuntime(object):
                 return owner.original_picker_max(menu)
             self.picker_wrapper = picker_max
             self.picker_class.GetMaxActiveDrones = picker_max
+        self._install_hold_hint()
         if existing is not None:
             self.attach(existing)
         return True
 
     def _rule(self, location, raw_get):
         if not self.active or not self.usable() or not isinstance(location, self.fitting_class):
+            return None
+        if not any(ref() is location for ref in self.dcb_locations):
             return None
         ship_id = location.GetCurrentShipID()
         # Ghost keys are distinct from the real session ship, even for the same type.
@@ -125,9 +210,7 @@ class PrivateGhostRuntime(object):
             return None
         return rule
 
-    def _project_attribute(self, location, raw_get, item_id, attribute_id, value):
-        # Future Solo projections join this dispatch, using raw_get for native
-        # eligibility. They must not install a second getter or own teardown.
+    def _project_dcb(self, location, raw_get, item_id, attribute_id, value):
         if attribute_id not in (BANDWIDTH, BAY, MAX_ACTIVE) or item_id != location.GetCurrentShipID():
             return value
         rule = self._rule(location, raw_get)
@@ -137,17 +220,107 @@ class PrivateGhostRuntime(object):
             return rule[2] if rule[2] is not None else value
         return value * rule[0 if attribute_id == BANDWIDTH else 1] if value > 0 else value
 
+    def _ghost_ship(self, location):
+        if not self.active or not self.usable() or not isinstance(location, self.fitting_class):
+            return None
+        ship_id = location.GetCurrentShipID()
+        if ship_id is None or ship_id == getattr(self.session, 'shipid', None):
+            return None
+        ship = location.dogmaItems.get(ship_id)
+        return ship if ship is not None and getattr(ship, 'categoryID', None) == 6 else None
+
+    def _project_solo(self, location, raw_get, item_id, attribute_id, value):
+        if self.solo is None or not _positive(value):
+            return value
+        ship = self._ghost_ship(location)
+        if ship is None:
+            return value
+        if item_id == location.GetCurrentShipID():
+            for factor in self.solo['ships'].get(int(ship.typeID), {}).get(attribute_id, ()):
+                value = scale_round6(value, factor)
+            return value
+        if attribute_id != self.solo['miningAttribute']:
+            return value
+        item = location.dogmaItems.get(item_id)
+        if item is None:
+            return value
+        type_id = int(item.typeID)
+        if type_id in self.solo['moduleTypes'] and getattr(item, 'categoryID', None) == 7:
+            if item_id in location.GetFittedItemsToShip() and item.GetShipID() == location.GetCurrentShipID():
+                return scale_round6(value, self.solo['moduleScale'])
+        elif type_id in self.solo['droneTypes'] and getattr(item, 'categoryID', None) == 18:
+            if item_id in ship.drones:
+                return scale_round6(value, self.solo['droneScale'])
+        return value
+
+    def _project_attribute(self, location, raw_get, item_id, attribute_id, value):
+        # Each family uses the current captured native value. One failure cannot
+        # discard a successful disjoint projection owned by the other family.
+        result = value
+        for project in (self._project_dcb, self._project_solo):
+            try:
+                projected = project(location, raw_get, item_id, attribute_id, value)
+                if projected != value:
+                    result = projected
+            except Exception:
+                pass
+        return result
+
+    def _install_hold_hint(self):
+        if self.solo is None or self.cargo_class is None or self.format_hold is None:
+            return
+        owner = self
+        self.hint_had_own = '_Update' in self.cargo_class.__dict__
+        self.original_hint = getattr(self.cargo_class, '_Update')
+        def update(panel):
+            result = owner.original_hint(panel)
+            try:
+                # Native fitting uses a rich tooltip, which takes priority over GetHint.
+                # Keep its localized header/description and own only our appended text.
+                tooltip = getattr(panel, 'tooltipPanelClassInfo', None)
+                if tooltip is None:
+                    return result
+                owner.hold_descriptions = dict((key, record) for key, record in owner.hold_descriptions.items() if record[0]() is not None)
+                record = owner.hold_descriptions.get(id(tooltip))
+                if record is None or record[0]() is not tooltip:
+                    record = [weakref.ref(tooltip), tooltip.descriptionText, tooltip.descriptionText]
+                    owner.hold_descriptions[id(tooltip)] = record
+                if tooltip.descriptionText != record[2]:
+                    return result  # Another owner changed this description; do not overwrite it.
+                rows = []
+                controller = panel.controller
+                location = controller.dogmaLocation
+                ship = owner._ghost_ship(location) if controller.IsSimulated() and controller.GetItemID() == location.GetCurrentShipID() and any(ref() is location for ref, _ in owner.records) else None
+                if ship is not None:
+                    program = owner.solo['ships'].get(int(ship.typeID), {})
+                    for attribute_id in sorted(program):
+                        if attribute_id == 38:
+                            continue
+                        value = location.GetAttributeValue(location.GetCurrentShipID(), attribute_id)
+                        if _positive(value):
+                            row = owner.format_hold(attribute_id, value)
+                            if row:
+                                rows.append(row)
+                text = ((record[1] + '<br>') if record[1] else '') + '<br>'.join(rows) if rows else record[1]
+                tooltip.descriptionText = text
+                record[2] = text
+            except Exception:
+                pass
+            return result
+        self.hint_wrapper = update
+        self.cargo_class._Update = update
+
     def attach(self, location):
         if not isinstance(location, self.fitting_class) or any(ref() is location for ref, _ in self.records):
             return
         raw_get = location.GetAttributeValue
-        raw_max = location.GetMaxActiveDrones
-        tracker = location.selectedDronesTracker
-        raw_register = tracker.RegisterDroneAsActive
-        # A third-party tracker implementation is outside the verified seam.
+        tracker = getattr(location, 'selectedDronesTracker', None)
+        raw_register = getattr(tracker, 'RegisterDroneAsActive', None)
         function = getattr(raw_register, 'im_func', getattr(raw_register, '__func__', None))
-        if function is not self.native_tracker_method:
+        dcb_compatible = bool(self.rules) and callable(raw_register) and self.native_tracker_method is not None and function is self.native_tracker_method
+        if not dcb_compatible and self.solo is None:
             return
+        raw_max = location.GetMaxActiveDrones if dcb_compatible else None
         owner = self
 
         def get_attribute(instance, item_id, attribute_id):
@@ -194,9 +367,11 @@ class PrivateGhostRuntime(object):
 
         changes = []
         try:
-            for obj, name, function in ((location, 'GetAttributeValue', get_attribute),
-                                        (location, 'GetMaxActiveDrones', get_max),
-                                        (tracker, 'RegisterDroneAsActive', register)):
+            hooks = [(location, 'GetAttributeValue', get_attribute)]
+            if dcb_compatible:
+                hooks.extend([(location, 'GetMaxActiveDrones', get_max),
+                              (tracker, 'RegisterDroneAsActive', register)])
+            for obj, name, function in hooks:
                 previous = obj.__dict__.get(name)
                 had_own = name in obj.__dict__
                 installed = _bind(function, obj)
@@ -206,9 +381,11 @@ class PrivateGhostRuntime(object):
             self._restore(changes)
             raise
         self.records.append((weakref.ref(location), changes))
+        if dcb_compatible:
+            self.dcb_locations.append(weakref.ref(location))
         # Existing selections came from native constraints. Revalidate only a
         # changed hull, deterministically, without ever touching live drones.
-        rule = self._rule(location, raw_get)
+        rule = self._rule(location, raw_get) if dcb_compatible else None
         if rule is not None:
             remaining = location.GetMaxActiveDrones()
             bandwidth = location.GetAttributeValue(location.GetCurrentShipID(), BANDWIDTH)
@@ -242,7 +419,7 @@ class PrivateGhostRuntime(object):
     def dispose(self):
         self.active = False
         changed_locations = []
-        for reference, _ in self.records:
+        for reference in self.dcb_locations:
             try:
                 location = reference()
                 if location is not None:
@@ -255,9 +432,23 @@ class PrivateGhostRuntime(object):
             self.fitting_class.__init__ = self.original_init
         if self.picker_wrapper is not None and self.picker_class.__dict__.get('GetMaxActiveDrones') is self.picker_wrapper:
             self.picker_class.GetMaxActiveDrones = self.original_picker_max
+        if self.hint_wrapper is not None and self.cargo_class.__dict__.get('_Update') is self.hint_wrapper:
+            if self.hint_had_own:
+                self.cargo_class._Update = self.original_hint
+            else:
+                delattr(self.cargo_class, '_Update')
+        for reference, original, owned in self.hold_descriptions.values():
+            try:
+                tooltip = reference()
+                if tooltip is not None and tooltip.descriptionText == owned:
+                    tooltip.descriptionText = original
+            except Exception:
+                pass
+        self.hold_descriptions = {}
         for _, changes in reversed(self.records):
             self._restore(changes)
         self.records = []
+        self.dcb_locations = []
         # A preview selected under an expanded limit must not retain an invalid
         # count after teardown. Only ghost selections are adjusted.
         for location in changed_locations:

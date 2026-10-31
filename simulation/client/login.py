@@ -23,7 +23,7 @@ try:
 
         def __init__(self):
             self.abi = 1
-            self.bundle_revision = 1
+            self.bundle_revision = 4
             self.active = True
             self.controller = None
             self.registered = []
@@ -124,8 +124,6 @@ try:
                 try:
                     from eve.client.script.ui.shared.fittingScreen.fittingDogmaLocation import FittingDogmaLocation
                     from eve.common.script.dogma.baseDogmaLocation import BaseDogmaLocation
-                    from shipfitting.droneUtil import SelectedDroneTracker
-                    from eve.client.script.ui.shared.fittingScreen.dronePickerMenu import DronePickerMenu
                     from eve.common.lib import appConst
                     from eveexceptions import UserError
                     from localization import GetByLabel
@@ -134,11 +132,63 @@ try:
                         'fittingDogmaLocation.LoadMyShip': FittingDogmaLocation.LoadMyShip.im_func,
                         'fittingDogmaLocation.GetCapacity': FittingDogmaLocation.GetCapacity.im_func,
                         'fittingDogmaLocation.GetAccurateAttributeValue': FittingDogmaLocation.GetAccurateAttributeValue.im_func,
-                        'fittingDogmaLocation.GetMaxActiveDrones': FittingDogmaLocation.GetMaxActiveDrones.im_func,
                         'baseDogmaLocation.GetAttributeValue': FittingDogmaLocation.GetAttributeValue.im_func,
-                        'droneUtil.RegisterDroneAsActive': SelectedDroneTracker.RegisterDroneAsActive.im_func,
-                        'dronePickerMenu.GetMaxActiveDrones': DronePickerMenu.GetMaxActiveDrones.im_func,
                     })
+                    valid = self.namespace['validate_policy'](self.policy) or {}
+                    providers = dict((key, self.policy['providers'][key]) for key in valid)
+                    tracker_method = None
+                    picker_class = None
+                    cargo_class = None
+                    format_hold = None
+                    if 'droneclassbalance' in providers:
+                        try:
+                            from shipfitting.droneUtil import SelectedDroneTracker
+                            from eve.client.script.ui.shared.fittingScreen.dronePickerMenu import DronePickerMenu
+                            self.verify({
+                                'fittingDogmaLocation.GetMaxActiveDrones': FittingDogmaLocation.GetMaxActiveDrones.im_func,
+                                'droneUtil.RegisterDroneAsActive': SelectedDroneTracker.RegisterDroneAsActive.im_func,
+                                'dronePickerMenu.GetMaxActiveDrones': DronePickerMenu.GetMaxActiveDrones.im_func,
+                            })
+                            tracker_method = SelectedDroneTracker.RegisterDroneAsActive.im_func
+                            picker_class = DronePickerMenu
+                        except Exception:
+                            providers.pop('droneclassbalance', None)
+                            print('FITTING_SIMULATION:DCB_UNAVAILABLE')
+                    if 'soloprogressionbalance' in providers:
+                        try:
+                            from eve.client.script.ui.inflight.shipModuleButton.moduleButtonTooltip import ModuleButtonTooltip
+                            from eve.client.script.ui.shared.fittingScreen.droneTooltip import DroneTooltip, DroneFittingTooltip
+                            self.verify({
+                                'moduleButtonTooltip.ModuleButtonTooltip.GetEffectiveAttributeValue': ModuleButtonTooltip.GetEffectiveAttributeValue.im_func,
+                                'moduleButtonTooltip.ModuleButtonTooltip.AddMiningLaserInfo': ModuleButtonTooltip.AddMiningLaserInfo.im_func,
+                                'droneTooltip.DroneTooltip.AddMiningDroneInfo': DroneTooltip.AddMiningDroneInfo.im_func,
+                                'droneTooltip.DroneFittingTooltip.GetDogmaLocation': DroneFittingTooltip.GetDogmaLocation.im_func,
+                                'fittingDogmaLocation.FittingDogmaLocation.GetFittedItemsToShip': FittingDogmaLocation.GetFittedItemsToShip.im_func,
+                            })
+                        except Exception:
+                            providers.pop('soloprogressionbalance', None)
+                            print('FITTING_SIMULATION:SOLO_UNAVAILABLE')
+                    if 'soloprogressionbalance' in providers:
+                        # Presentation is optional even when Solo Dogma is compatible.
+                        try:
+                            from eve.client.script.ui.shared.fittingScreen.fittingPanels.minihangar import CargoSlots, CargoCargoSlots
+                            from dogma.data import get_attribute_display_name
+                            from carbon.common.script.util.format import FmtAmt
+                            self.verify({
+                                'minihangar.CargoSlots.ApplyAttributes': CargoSlots.ApplyAttributes.im_func,
+                                'minihangar.CargoCargoSlots.GetSimulatedCapacity': CargoCargoSlots.GetSimulatedCapacity.im_func,
+                                'minihangar.CargoSlots._Update': CargoCargoSlots._Update.im_func,
+                            })
+                            def format_hold(attribute_id, value):
+                                label = get_attribute_display_name(attribute_id)
+                                return u'%s: %s m\u00b3' % (label, FmtAmt(value, showFraction=1)) if label else None
+                            cargo_class = CargoCargoSlots
+                        except Exception:
+                            print('FITTING_SIMULATION:HOLD_HINT_UNAVAILABLE')
+                    if not providers:
+                        return
+                    effective_policy = dict(self.policy)
+                    effective_policy['providers'] = providers
                     def warning(kind, limit):
                         if kind == 'count':
                             text = GetByLabel('UI/Fitting/FittingWindow/ActiveDronesLimitWarning', limit=limit)
@@ -150,9 +200,9 @@ try:
                     ghost_service = self.sm.GetService('ghostFittingSvc')
                     if not self.usable() or generation != self.generation:
                         return
-                    controller = self.namespace['PrivateGhostRuntime'](self.policy, FittingDogmaLocation,
-                        SelectedDroneTracker.RegisterDroneAsActive.im_func, appConst.attributeDroneBandwidthUsed,
-                        self.session, self.usable, warning, DronePickerMenu)
+                    controller = self.namespace['PrivateGhostRuntime'](effective_policy, FittingDogmaLocation,
+                        tracker_method, appConst.attributeDroneBandwidthUsed,
+                        self.session, self.usable, warning, picker_class, cargo_class, format_hold)
                     self.controller = controller
                     controller.install(existing)
                     if not self.usable() or generation != self.generation:

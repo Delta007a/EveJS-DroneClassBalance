@@ -12,7 +12,7 @@ const {
   transformLiveFittingStateSource,
 } = require("./lib/sourceTransforms");
 
-const MOD_VERSION = "0.2.1";
+const MOD_VERSION = "0.2.3";
 const MOD_DIR = __dirname;
 const RUNTIME_ROOT = path.resolve(MOD_DIR, "../..");
 const TARGET = path.resolve(
