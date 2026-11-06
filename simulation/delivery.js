@@ -6,6 +6,8 @@ const zlib = require("node:zlib");
 // Private to DroneClassBalance and SoloProgressionBalance. Not a mod API.
 const KEY = "evejs.ourMods.privateFittingRuntime";
 const HANDSHAKE_HASH = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
+const LOGIN_CALL = "buildTidiSignedFunc(this.clientId)";
+const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId\).*, false\], \/\/ func tuple: \[marshaled_code, verification\]\r?$/m;
 const hash = source => crypto.createHash("sha256").update(String(source).replace(/\r\n/g, "\n")).digest("hex");
 // Exact source/version pairs. 261018.1 preserves buildTidiSignedFunc,
 // buildMarshaledString and the signedFunc [buffer, false] ownership seam.
@@ -16,7 +18,6 @@ const HANDSHAKE_HASHES = Object.freeze({
   "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
   "261018.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
 });
-function supportsSource(source) { return Object.values(HANDSHAKE_HASHES).includes(hash(source)); }
 function getRuntimeVersion(root) {
   try {
     const version = JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8")).version;
@@ -26,14 +27,10 @@ function getRuntimeVersion(root) {
 }
 function supportsRoot(root) { return getRuntimeVersion(root) !== null; }
 function extendSource(source) {
-  if (!supportsSource(source)) return null;
-  // In-memory only. Retain the original login function and its return value.
-  return source + `\n;const __fscOriginalLogin = buildTidiSignedFunc;
-buildTidiSignedFunc = function() {
-  const original = __fscOriginalLogin.apply(this, arguments);
-  try { return globalThis[Symbol.for("${KEY}")]?.compose(original) || original; }
-  catch (error) { console.error("[FittingSimulation] Delivery unavailable; native simulation retained."); return original; }
-};\n`;
+  if (source.split(LOGIN_CALL).length !== 2 || !LOGIN_TUPLE.test(source)) return null;
+  // Leave the native call intact so another wrapper can compose at the same point.
+  const compose = `((packet) => globalThis[Symbol.for("${KEY}")]?.compose(packet) ?? packet)`;
+  return source.replace(LOGIN_CALL, `${compose}(${LOGIN_CALL})`);
 }
 function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
@@ -52,19 +49,22 @@ function bundleDigest(bundle) {
 function createDelivery(bundle, policyProvider) {
   const source64 = zlib.deflateSync(Buffer.from(bundle.adapter, "utf8"), { level: 9 }).toString("base64");
   return function compose(original) {
-    const policy = policyProvider();
+    if (!Buffer.isBuffer(original) || original.length <= 5 || original.length > 256 * 1024 + 5 ||
+        original[0] !== 0x74 || original.readUInt32LE(1) !== original.length - 5) return original;
+    const previous = original.subarray(5).toString("latin1");
+    if (!previous.trim() || /[^\x09\x0a\x0d\x20-\x7e]/.test(previous)) return original;
     // Deliver even a null policy: a reconnect must dispose any old controller.
-    if (!Buffer.isBuffer(original) || original.length < 5 || original[0] !== 0x74 || original.readUInt32LE(1) !== original.length - 5) return original;
+    const policy = policyProvider();
     const policy64 = Buffer.from(JSON.stringify(policy), "utf8").toString("base64");
     const checks64 = Buffer.from(JSON.stringify(bundle.fingerprints), "utf8").toString("base64");
     const source = `_fsc_source64 = '${source64}'\n_fsc_policy64 = '${policy64}'\n_fsc_checks64 = '${checks64}'\n` + bundle.bootstrap;
     const encoded = Buffer.from(source, "utf8").toString("base64");
     const expression = `eval(compile(__import__('base64').b64decode('${encoded}'), '<fitting-simulation-login>', 'exec'), {'__builtins__': __builtins__, '_fsc_context': globals()})`;
-    const wrapped = `(lambda _fsc_result: (${expression}, _fsc_result)[1])(${original.subarray(5).toString("ascii")})`;
+    const wrapped = `(lambda _fsc_result: (${expression}, _fsc_result)[1])(${previous})`;
     const data = Buffer.from(wrapped, "ascii");
     if (data.length > 256 * 1024) return original;
     const header = Buffer.alloc(5); header[0] = 0x74; header.writeUInt32LE(data.length, 1);
     return Buffer.concat([header, data]);
   };
 }
-module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, supportsSource, extendSource, readBundle, bundleDigest, createDelivery };
+module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, extendSource, readBundle, bundleDigest, createDelivery };

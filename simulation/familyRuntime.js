@@ -80,11 +80,9 @@ function createState(runtimeRoot, host = globalThis, moduleHost = Module) {
   const previousCompile = moduleHost.prototype._compile;
   moduleHost.prototype._compile = function privateFittingCompile(content, filename) {
     if (canonical(filename) === target) {
-      const legacy = host[Symbol.for("evejs.fittingSimulationCompanion.v1")];
-      const autoMining = host[Symbol.for("evejs.automining.loader.v1")]?.delivery;
-      const transformed = legacy?.active || autoMining ? null : extendSource(content);
+      const transformed = extendSource(content);
       if (transformed) { content = transformed; state.transformed = true; }
-      else state.warn("Login seam changed/owned (remove legacy companion; AutoMining composition unsupported)");
+      else state.warn("Login packet call site unavailable");
     }
     return previousCompile.call(this, content, filename);
   };
