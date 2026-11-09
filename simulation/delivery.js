@@ -7,7 +7,7 @@ const zlib = require("node:zlib");
 const KEY = "evejs.ourMods.privateFittingRuntime";
 const HANDSHAKE_HASH = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
 const LOGIN_CALL = "buildTidiSignedFunc(this.clientId)";
-const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId\).*, false\], \/\/ func tuple: \[marshaled_code, verification\]\r?$/m;
+const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId\).*, (?:false\], \/\/ func tuple: \[marshaled_code, verification\]|0\],)\r?$/m;
 const hash = source => crypto.createHash("sha256").update(String(source).replace(/\r\n/g, "\n")).digest("hex");
 // Exact source/version pairs. 261018.1 preserves buildTidiSignedFunc,
 // buildMarshaledString and the signedFunc [buffer, false] ownership seam.
@@ -15,6 +15,7 @@ const hash = source => crypto.createHash("sha256").update(String(source).replace
 // wrapper leaves intact. Evaluate native login first and return its result.
 const HANDSHAKE_HASHES = Object.freeze({
   "0.12.9": HANDSHAKE_HASH,
+  "261108.1": "5e6d7445213c89c8ad58d58ace38ac1f08d6ebfb40f7ef7c4a2491626a8dab15",
   "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
   "261018.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
 });
@@ -36,7 +37,7 @@ function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
   const bootstrap = fs.readFileSync(path.join(modRoot, "client/login.py"), "utf8");
   const fingerprints = JSON.parse(fs.readFileSync(path.join(modRoot, "client/compatibility.json"), "utf8"));
-  const bundle = { abi: 1, revision: 4, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
+  const bundle = { abi: 1, revision: 5, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
   bundle.digest = bundleDigest(bundle);
   return bundle;
 }

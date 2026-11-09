@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "id": "droneclassbalance",
   "displayName": "DroneClassBalance",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Class-based drone rules with automatic fitting simulation on supported clients.",
   "kind": "loader",
   "supportedBackends": [
@@ -17,7 +17,8 @@
       "0.12.8",
       "0.12.9",
       "261018.1",
-      "261028.1"
+      "261028.1",
+      "261108.1"
     ]
   },
   "settings": {
