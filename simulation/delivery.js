@@ -6,8 +6,8 @@ const zlib = require("node:zlib");
 // Private to DroneClassBalance and SoloProgressionBalance. Not a mod API.
 const KEY = "evejs.ourMods.privateFittingRuntime";
 const HANDSHAKE_HASH = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
-const LOGIN_CALL = "buildTidiSignedFunc(this.clientId)";
-const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId\).*, (?:false\], \/\/ func tuple: \[marshaled_code, verification\]|0\],)\r?$/m;
+const LOGIN_CALL = /buildTidiSignedFunc\(this\.clientId(?:, \{ accountRole: this\.accountRole \})?\)/g;
+const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId(?:, \{ accountRole: this\.accountRole \})?\).*, (?:false\], \/\/ func tuple: \[marshaled_code, verification\]|0\],)\r?$/m;
 const hash = source => crypto.createHash("sha256").update(String(source).replace(/\r\n/g, "\n")).digest("hex");
 // Exact source/version pairs. 261018.1 preserves buildTidiSignedFunc,
 // buildMarshaledString and the signedFunc [buffer, false] ownership seam.
@@ -15,6 +15,7 @@ const hash = source => crypto.createHash("sha256").update(String(source).replace
 // wrapper leaves intact. Evaluate native login first and return its result.
 const HANDSHAKE_HASHES = Object.freeze({
   "0.12.9": HANDSHAKE_HASH,
+  "261115.2": "7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7",
   "261108.1": "5e6d7445213c89c8ad58d58ace38ac1f08d6ebfb40f7ef7c4a2491626a8dab15",
   "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
   "261018.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
@@ -28,16 +29,16 @@ function getRuntimeVersion(root) {
 }
 function supportsRoot(root) { return getRuntimeVersion(root) !== null; }
 function extendSource(source) {
-  if (source.split(LOGIN_CALL).length !== 2 || !LOGIN_TUPLE.test(source)) return null;
+  if ([...source.matchAll(LOGIN_CALL)].length !== 1 || !LOGIN_TUPLE.test(source)) return null;
   // Leave the native call intact so another wrapper can compose at the same point.
   const compose = `((packet) => globalThis[Symbol.for("${KEY}")]?.compose(packet) ?? packet)`;
-  return source.replace(LOGIN_CALL, `${compose}(${LOGIN_CALL})`);
+  return source.replace(LOGIN_CALL, call => `${compose}(${call})`);
 }
 function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
   const bootstrap = fs.readFileSync(path.join(modRoot, "client/login.py"), "utf8");
   const fingerprints = JSON.parse(fs.readFileSync(path.join(modRoot, "client/compatibility.json"), "utf8"));
-  const bundle = { abi: 1, revision: 5, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
+  const bundle = { abi: 1, revision: 6, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
   bundle.digest = bundleDigest(bundle);
   return bundle;
 }
