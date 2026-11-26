@@ -1,4 +1,14 @@
 {
+  "invCacheContainer.__init__": {
+    "line": 992,
+    "bytecodeSha256": "1f899229c28e24b38b7fdce03ee5fb86dd76fc41d8a7534ffd20a85118e1c9c3",
+    "arguments": ["self", "moniker", "key", "broker"]
+  },
+  "invCacheContainer.GetCapacity": {
+    "line": 1310,
+    "bytecodeSha256": "7deda35a8bbeb41fb50cd93d7f39cecfc636c02747712181b5603c89c5bba224",
+    "arguments": ["self", "flag"]
+  },
   "fittingDogmaLocation.__init__": {
     "line": 60,
     "bytecodeSha256": "6b4430e4815a1e8e7c02e4ca931ae0874ef987978ac17ddf281aaade5bb4cb2c",
@@ -178,18 +188,25 @@
       "self"
     ]
   },
-  "minihangar.CargoSlots._Update": {
-    "line": 173,
-    "bytecodeSha256": "29b2f8c48430def4b60354ffc96a98ab9e536b2603aaecc13f0bf38d06ff0b15",
-    "arguments": [
-      "self"
-    ]
-  },
   "fittingDogmaLocation.FittingDogmaLocation.GetFittedItemsToShip": {
     "line": 394,
     "bytecodeSha256": "9413b042452b995ecc32fde7f1dc832c5e2524919b5825e39be251d687df6acb",
     "arguments": [
       "self"
     ]
+  },
+  "buildOverrides": {
+    "3724492": {
+      "invCacheContainer.GetCapacity": {
+        "line": 1311,
+        "bytecodeSha256": "b369dead26261909bccfd15ca2cc16d076fb88c92ffc6527bcc6305338ca7e8b",
+        "arguments": ["self", "flag"]
+      },
+      "minihangar.CargoSlots._Update": {
+        "line": 173,
+        "bytecodeSha256": "b0b24f8ddea3b9eadd364a746bc71bdf9b7351e2570fbf54519c9581bd02b2b5",
+        "arguments": ["self"]
+      }
+    }
   }
 }

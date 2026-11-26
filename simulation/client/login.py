@@ -23,9 +23,10 @@ try:
 
         def __init__(self):
             self.abi = 1
-            self.bundle_revision = 4
+            self.bundle_revision = 8
             self.active = True
             self.controller = None
+            self.restore_docked_holds = None
             self.registered = []
             self.sm = None
             self.session = None
@@ -39,6 +40,10 @@ try:
             return self.current() and self.character is not None and self.character == getattr(self.session, 'charid', None)
 
         def dispose_controller(self):
+            restore = self.restore_docked_holds
+            self.restore_docked_holds = None
+            if restore is not None:
+                restore()
             controller = self.controller
             self.controller = None
             if controller is not None:
@@ -80,11 +85,13 @@ try:
         def start(self):
             try:
                 _fsc_boot = _fsc_context.get('boot', getattr(_fsc_builtins, 'boot', None))
-                if int(getattr(_fsc_boot, 'build', 0)) != 3396210:
+                build = int(getattr(_fsc_boot, 'build', 0))
+                self.policy = _fsc_json.loads(_fsc_base64.b64decode(_fsc_policy64))
+                if not isinstance(self.policy, dict) or build != self.policy.get('clientBuild'):
                     self.dispose()
                     return
-                self.policy = _fsc_json.loads(_fsc_base64.b64decode(_fsc_policy64))
                 self.checks = _fsc_json.loads(_fsc_base64.b64decode(_fsc_checks64))
+                self.checks.update(self.checks.pop('buildOverrides', {}).get(str(build), {}))
                 self.namespace = {'__builtins__': _fsc_builtins, '__name__': 'evejs_fitting_simulation'}
                 eval(compile(_fsc_zlib.decompress(_fsc_base64.b64decode(_fsc_source64)), '<fitting-simulation-adapter>', 'exec'), self.namespace)
                 if self.namespace['validate_policy'](self.policy) is None:
@@ -115,11 +122,32 @@ try:
                 if code is None or _fsc_hashlib.sha256(code.co_code).hexdigest() != self.checks[key]['bytecodeSha256']:
                     raise RuntimeError('Unsupported fitting seam: ' + key)
 
+        def install_docked_holds(self, generation):
+            if self.policy['evejs'] not in ('261115.2', '261125.3') or 'soloprogressionbalance' not in (self.namespace['validate_policy'](self.policy) or {}):
+                return
+            try:
+                from eve.client.script.environment.invCache import invCacheContainer, Row
+                from eve.common.lib import appConst
+                self.verify({'invCacheContainer.__init__': invCacheContainer.__init__.im_func,
+                             'invCacheContainer.GetCapacity': invCacheContainer.GetCapacity.im_func})
+                # Cargo, fleet hangar and the supported mining/logistics holds.
+                flags = frozenset((appConst.flagCargo, appConst.flagFleetHangar,
+                                   134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+                                   148, 149, 151, 154, 174, 176, 177, 179, 181, 182, 185, 188))
+                if not self.usable() or generation != self.generation:
+                    return
+                self.restore_docked_holds = self.namespace['install_docked_hold_capacity'](
+                    invCacheContainer, Row, self.session, self.usable, flags)
+            except Exception:
+                print('SOLO_DOCKED_HOLDS:UNAVAILABLE')
+
         def connect(self, generation):
             for attempt in range(6):
                 _fsc_blue.pyos.synchro.SleepWallclock(1000)
                 if not self.usable() or generation != self.generation:
                     return
+                if attempt == 0:
+                    self.install_docked_holds(generation)
                 controller = None
                 try:
                     from eve.client.script.ui.shared.fittingScreen.fittingDogmaLocation import FittingDogmaLocation

@@ -15,6 +15,7 @@ const hash = source => crypto.createHash("sha256").update(String(source).replace
 // wrapper leaves intact. Evaluate native login first and return its result.
 const HANDSHAKE_HASHES = Object.freeze({
   "0.12.9": HANDSHAKE_HASH,
+  "261125.3": "7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7",
   "261115.2": "7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7",
   "261108.1": "5e6d7445213c89c8ad58d58ace38ac1f08d6ebfb40f7ef7c4a2491626a8dab15",
   "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
@@ -28,6 +29,10 @@ function getRuntimeVersion(root) {
   } catch (_) { return null; }
 }
 function supportsRoot(root) { return getRuntimeVersion(root) !== null; }
+function getClientBuild(version) {
+  if (!Object.hasOwn(HANDSHAKE_HASHES, version)) return null;
+  return version === "261125.3" ? 3724492 : 3396210;
+}
 function extendSource(source) {
   if ([...source.matchAll(LOGIN_CALL)].length !== 1 || !LOGIN_TUPLE.test(source)) return null;
   // Leave the native call intact so another wrapper can compose at the same point.
@@ -38,7 +43,7 @@ function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
   const bootstrap = fs.readFileSync(path.join(modRoot, "client/login.py"), "utf8");
   const fingerprints = JSON.parse(fs.readFileSync(path.join(modRoot, "client/compatibility.json"), "utf8"));
-  const bundle = { abi: 1, revision: 6, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
+  const bundle = { abi: 1, revision: 8, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
   bundle.digest = bundleDigest(bundle);
   return bundle;
 }
@@ -69,4 +74,4 @@ function createDelivery(bundle, policyProvider) {
     return Buffer.concat([header, data]);
   };
 }
-module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, extendSource, readBundle, bundleDigest, createDelivery };
+module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, getClientBuild, extendSource, readBundle, bundleDigest, createDelivery };

@@ -89,7 +89,12 @@ def _validate_solo(provider):
 
 
 def validate_policy(policy):
-    if not isinstance(policy, dict) or policy.get('schema') != 1 or policy.get('evejs') not in ('0.12.9', '261018.1', '261028.1', '261108.1', '261115.2') or policy.get('clientBuild') != 3396210:
+    if not isinstance(policy, dict) or policy.get('schema') != 1:
+        return None
+    version = policy.get('evejs')
+    if version not in ('0.12.9', '261018.1', '261028.1', '261108.1', '261115.2', '261125.3'):
+        return None
+    if policy.get('clientBuild') != (3724492 if version == '261125.3' else 3396210):
         return None
     revision, providers = policy.get('revision'), policy.get('providers')
     if not isinstance(revision, STRING_TYPES) or len(revision) != 64 or any(c not in '0123456789abcdef' for c in revision):
@@ -129,6 +134,48 @@ def _bind(function, obj):
         return types.MethodType(function, obj)
     except TypeError:
         return types.MethodType(function, obj, obj.__class__)
+
+
+def install_docked_hold_capacity(container_class, row, session, usable, capacity_flags):
+    original = container_class.__dict__['GetCapacity']
+
+    def ship_at_dock(container):
+        dock = getattr(session, 'stationid', None) or getattr(session, 'structureid', None)
+        if not dock or not usable():
+            return None
+        ship_id = container.itemID
+        if not ship_id or ship_id == getattr(session, 'shipid', None):
+            return None
+        item = container.item
+        if (item.categoryID == 6 and item.singleton == 1 and item.ownerID == session.charid
+                and item.locationID == dock):
+            return (dock, ship_id)
+        return None
+
+    def get_capacity(container, flag=None):
+        if flag in capacity_flags:
+            try:
+                ship = ship_at_dock(container)
+                if ship is not None:
+                    capacity = container.moniker.GetCapacity(flag)
+                    limit, used = capacity.capacity, capacity.used
+                    # The remote call can yield while the pilot boards or logs out.
+                    if ((limit == 0 or _positive(limit)) and (used == 0 or _positive(used))
+                            and ship_at_dock(container) == ship):
+                        result = row(['capacity', 'used'], [limit, used])
+                        container.capacityByLocation = result
+                        return result
+            except Exception:
+                pass
+        return original(container, flag)
+
+    container_class.GetCapacity = get_capacity
+
+    def restore():
+        if container_class.__dict__.get('GetCapacity') is get_capacity:
+            container_class.GetCapacity = original
+
+    return restore
 
 
 class PrivateGhostRuntime(object):

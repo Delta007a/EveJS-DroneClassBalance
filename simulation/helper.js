@@ -14,15 +14,16 @@ function execute(request, features = process.env.EVEJS_LAUNCHER_HELPER_FEATURES 
       capability.clear(modRoot);
       message = "Restart server and reconnect clients to disable DroneClassBalance; no vendor client files require restoration.";
     } else {
-      const { supportsRoot, readBundle } = require("./delivery");
+      const { getRuntimeVersion, getClientBuild, readBundle } = require("./delivery");
       const bundle = readBundle(path.join(modRoot, "simulation"));
+      const clientBuild = getClientBuild(getRuntimeVersion(request.runtime.evejsRoot));
       let compatible = false;
       try {
         const ini = fs.readFileSync(path.join(request.runtime.clientRoot, "start.ini"), "utf8");
-        compatible = supportedHost && request.runtime.backend === "native" && supportsRoot(request.runtime.evejsRoot) &&
-          /^build\s*=\s*3396210\s*$/m.test(ini.replace(/\r/g, ""));
+        const selectedBuild = Number(/^build\s*=\s*(\d+)\s*$/m.exec(ini)?.[1]);
+        compatible = supportedHost && request.runtime.backend === "native" && clientBuild === selectedBuild;
       } catch (_) { /* Optional preflight cannot block gameplay. */ }
-      capability.record(modRoot, request.runtime.evejsRoot, bundle, compatible);
+      capability.record(modRoot, request.runtime.evejsRoot, bundle, compatible, clientBuild);
       available = compatible;
       if (available) message = "DroneClassBalance gameplay and transient fitting simulation ready; no separate companion required.";
     }
