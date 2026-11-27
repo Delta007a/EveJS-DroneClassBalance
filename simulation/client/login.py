@@ -23,7 +23,7 @@ try:
 
         def __init__(self):
             self.abi = 1
-            self.bundle_revision = 8
+            self.bundle_revision = 9
             self.active = True
             self.controller = None
             self.restore_docked_holds = None
@@ -123,7 +123,15 @@ try:
                     raise RuntimeError('Unsupported fitting seam: ' + key)
 
         def install_docked_holds(self, generation):
-            if self.policy['evejs'] not in ('261115.2', '261125.3') or 'soloprogressionbalance' not in (self.namespace['validate_policy'](self.policy) or {}):
+            if 'soloprogressionbalance' not in (self.namespace['validate_policy'](self.policy) or {}):
+                return
+            provider = self.policy['providers']['soloprogressionbalance']
+            if 'dockedHolds' in provider:
+                supported = provider['dockedHolds'] is True
+            else:
+                # Keep the capability of older Solo bundles when paired with a newer DCB.
+                supported = self.policy['evejs'] in ('261115.2', '261125.3')
+            if not supported:
                 return
             try:
                 from eve.client.script.environment.invCache import invCacheContainer, Row

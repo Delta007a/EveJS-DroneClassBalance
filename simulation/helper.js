@@ -14,9 +14,9 @@ function execute(request, features = process.env.EVEJS_LAUNCHER_HELPER_FEATURES 
       capability.clear(modRoot);
       message = "Restart server and reconnect clients to disable DroneClassBalance; no vendor client files require restoration.";
     } else {
-      const { getRuntimeVersion, getClientBuild, readBundle } = require("./delivery");
+      const { getRuntimeProfile, readBundle } = require("./delivery");
       const bundle = readBundle(path.join(modRoot, "simulation"));
-      const clientBuild = getClientBuild(getRuntimeVersion(request.runtime.evejsRoot));
+      const clientBuild = getRuntimeProfile(request.runtime.evejsRoot)?.clientBuild ?? null;
       let compatible = false;
       try {
         const ini = fs.readFileSync(path.join(request.runtime.clientRoot, "start.ini"), "utf8");

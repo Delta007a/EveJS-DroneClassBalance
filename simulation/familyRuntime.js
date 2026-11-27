@@ -4,7 +4,7 @@
 const Module = require("node:module");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { KEY, supportsRoot, getRuntimeVersion, getClientBuild, extendSource, bundleDigest, createDelivery } = require("./delivery");
+const { KEY, getRuntimeProfile, extendSource, bundleDigest, createDelivery } = require("./delivery");
 const FAMILIES = Object.freeze(["droneclassbalance", "soloprogressionbalance"]);
 const canonical = filename => path.resolve(filename).toLowerCase();
 
@@ -17,9 +17,7 @@ function validMember(member) {
     b.digest === bundleDigest(b);
 }
 
-function createState(runtimeRoot, host = globalThis, moduleHost = Module) {
-  const runtimeVersion = getRuntimeVersion(runtimeRoot);
-  const clientBuild = getClientBuild(runtimeVersion);
+function createState(runtimeRoot, { version: runtimeVersion, clientBuild }, moduleHost) {
   const target = canonical(path.join(runtimeRoot, "server/src/network/tcp/handshake.js"));
   const members = new Map();
   const warned = new Set();
@@ -102,10 +100,11 @@ function attachMember(runtimeRoot, member, host = globalThis, moduleHost = Modul
     existing.add(member);
     return existing;
   }
-  if (!supportsRoot(runtimeRoot)) return { active: false, reason: "unsupported-evejs" };
+  const profile = getRuntimeProfile(runtimeRoot);
+  if (!profile) return { active: false, reason: "unsupported-client-login" };
   const target = canonical(path.join(runtimeRoot, "server/src/network/tcp/handshake.js"));
   if (Object.keys(moduleHost._cache).some(name => canonical(name) === target)) return { active: false, reason: "handshake-already-loaded" };
-  const state = createState(runtimeRoot, host, moduleHost);
+  const state = createState(runtimeRoot, profile, moduleHost);
   host[key] = state;
   state.add(member);
   return state;

@@ -1,13 +1,11 @@
 "use strict";
 const crypto = require("node:crypto");
-const { getClientBuild } = require("./delivery");
 
 // Wire schema is provider-based so later phases can add independent providers.
 // Phase 1 emits only DroneClassBalance, resolved by the existing loaded runtime.
-function buildDronePolicy(state, shipMetadata, evejsVersion = "0.12.9") {
-  if (!state || state.active !== true || state.transformApplied !== true) return null;
-  const clientBuild = getClientBuild(evejsVersion);
-  if (clientBuild === null) return null;
+function buildDronePolicy(state, shipMetadata, profile) {
+  if (!state || state.active !== true || state.transformApplied !== true || !profile) return null;
+  const { version, clientBuild } = profile;
   const runtime = state.runtime;
   if (!runtime || typeof runtime.resolveMetadata !== "function" || typeof runtime.selectRule !== "function") return null;
   const rules = [];
@@ -28,7 +26,7 @@ function buildDronePolicy(state, shipMetadata, evejsVersion = "0.12.9") {
     hulls[identity.typeID] = indices.get(key);
   }
   const provider = { schema: 1, rules, hulls };
-  const policy = { schema: 1, evejs: evejsVersion, clientBuild, providers: { droneclassbalance: provider } };
+  const policy = { schema: 1, evejs: version, clientBuild, providers: { droneclassbalance: provider } };
   policy.revision = crypto.createHash("sha256").update(JSON.stringify(policy)).digest("hex");
   return policy;
 }

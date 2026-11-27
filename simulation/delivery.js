@@ -5,33 +5,31 @@ const path = require("node:path");
 const zlib = require("node:zlib");
 // Private to DroneClassBalance and SoloProgressionBalance. Not a mod API.
 const KEY = "evejs.ourMods.privateFittingRuntime";
-const HANDSHAKE_HASH = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
+const LEGACY_HANDSHAKE = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
 const LOGIN_CALL = /buildTidiSignedFunc\(this\.clientId(?:, \{ accountRole: this\.accountRole \})?\)/g;
 const LOGIN_TUPLE = /^[ \t]*\[.*buildTidiSignedFunc\(this\.clientId(?:, \{ accountRole: this\.accountRole \})?\).*, (?:false\], \/\/ func tuple: \[marshaled_code, verification\]|0\],)\r?$/m;
 const hash = source => crypto.createHash("sha256").update(String(source).replace(/\r\n/g, "\n")).digest("hex");
-// Exact source/version pairs. 261018.1 preserves buildTidiSignedFunc,
-// buildMarshaledString and the signedFunc [buffer, false] ownership seam.
-// Its changes are per-connection IDs and transport-close encoding, which the
-// wrapper leaves intact. Evaluate native login first and return its result.
-const HANDSHAKE_HASHES = Object.freeze({
-  "0.12.9": HANDSHAKE_HASH,
-  "261125.3": "7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7",
-  "261115.2": "7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7",
-  "261108.1": "5e6d7445213c89c8ad58d58ace38ac1f08d6ebfb40f7ef7c4a2491626a8dab15",
-  "261028.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
-  "261018.1": "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566",
-});
-function getRuntimeVersion(root) {
+// Reviewed native signed-function builders and their client builds.
+const LOGIN_BUILDS = new Map([
+  [LEGACY_HANDSHAKE, [3396210]],
+  ["c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566", [3396210]],
+  ["5e6d7445213c89c8ad58d58ace38ac1f08d6ebfb40f7ef7c4a2491626a8dab15", [3396210]],
+  ["7aaa72247049b38d3f656f3b2c602877a8bcf0d9ff0af68f1795ff1327565ba7", [3396210, 3724492]],
+]);
+function getRuntimeProfile(root) {
   try {
     const version = JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8")).version;
-    const expected = HANDSHAKE_HASHES[version];
-    return expected && hash(fs.readFileSync(path.join(root, "server/src/network/tcp/handshake.js"), "utf8")) === expected ? version : null;
+    const source = fs.readFileSync(path.join(root, "server/src/network/tcp/handshake.js"), "utf8");
+    const digest = hash(source);
+    const builds = LOGIN_BUILDS.get(digest);
+    if (typeof version !== "string" || !version || !builds || extendSource(source) === null) return null;
+    const profile = path.resolve(root, "server/src/network/protocolProfile.js");
+    // The reviewed legacy builder predates the separate protocol profile.
+    const clientBuild = fs.existsSync(profile)
+      ? require(profile).CLIENT_COMPATIBILITY_PROFILE?.clientBuild
+      : digest === LEGACY_HANDSHAKE ? 3396210 : null;
+    return builds.includes(clientBuild) ? { version, clientBuild } : null;
   } catch (_) { return null; }
-}
-function supportsRoot(root) { return getRuntimeVersion(root) !== null; }
-function getClientBuild(version) {
-  if (!Object.hasOwn(HANDSHAKE_HASHES, version)) return null;
-  return version === "261125.3" ? 3724492 : 3396210;
 }
 function extendSource(source) {
   if ([...source.matchAll(LOGIN_CALL)].length !== 1 || !LOGIN_TUPLE.test(source)) return null;
@@ -43,7 +41,7 @@ function readBundle(modRoot) {
   const adapter = fs.readFileSync(path.join(modRoot, "client/adapter.py"), "utf8");
   const bootstrap = fs.readFileSync(path.join(modRoot, "client/login.py"), "utf8");
   const fingerprints = JSON.parse(fs.readFileSync(path.join(modRoot, "client/compatibility.json"), "utf8"));
-  const bundle = { abi: 1, revision: 8, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
+  const bundle = { abi: 1, revision: 9, families: ["droneclassbalance", "soloprogressionbalance"], wireSchema: 1, adapter, bootstrap, fingerprints };
   bundle.digest = bundleDigest(bundle);
   return bundle;
 }
@@ -74,4 +72,4 @@ function createDelivery(bundle, policyProvider) {
     return Buffer.concat([header, data]);
   };
 }
-module.exports = { KEY, HANDSHAKE_HASH, HANDSHAKE_HASHES, getRuntimeVersion, supportsRoot, getClientBuild, extendSource, readBundle, bundleDigest, createDelivery };
+module.exports = { KEY, getRuntimeProfile, extendSource, readBundle, bundleDigest, createDelivery };
